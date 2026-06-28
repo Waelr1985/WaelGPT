@@ -136,6 +136,223 @@ WaelGPT/
     `-- cicd.yaml           # GitHub Actions deployment workflow
 ```
 
+## Python Files Explained For Beginners
+
+This section explains each Python file in simple words. If you are new to AI agents, read this part first.
+
+### `app.py`
+
+`app.py` is the main web server file. It starts the FastAPI app and connects the browser interface to the AI agent.
+
+Think of this file as the reception desk of WaelGPT. Every user action goes through it first.
+
+What it does:
+
+- Opens the home page with `templates/index.html`.
+- Receives user chat messages.
+- Streams the AI answer back to the browser.
+- Receives uploaded documents.
+- Saves user and assistant messages.
+- Loads old conversations.
+- Connects the frontend to the LangGraph agent.
+
+Important parts:
+
+- `home()` shows the main chat page.
+- `conversations()` returns the saved chat list for the sidebar.
+- `history(thread_id)` returns messages from one old conversation.
+- `upload_document()` accepts PDF, DOCX, TXT, Markdown, Python, and CSV files.
+- `chat_stream()` sends the user message to the AI agent and streams the answer back.
+- `should_stream_chunk()` hides raw tool output so users only see clean AI text.
+- `extract_text_from_chunk()` pulls normal text out of streamed AI chunks.
+
+Beginner idea:
+
+```text
+Browser -> app.py -> AI agent -> streamed answer -> Browser
+```
+
+### `agent.py`
+
+`agent.py` builds the AI agent brain.
+
+This is where WaelGPT connects to Google Gemini and LangGraph. LangGraph controls the flow: the AI can answer directly or decide to use a tool.
+
+What it does:
+
+- Loads the Gemini model.
+- Defines which Gemini models are allowed.
+- Creates the system prompt that tells WaelGPT how to behave.
+- Connects tools to the AI model.
+- Builds a LangGraph workflow with two main nodes: chatbot and tools.
+- Saves LangGraph checkpoints in SQLite.
+- Caches agents so the app does not rebuild the same model every time.
+
+Important parts:
+
+- `SYSTEM_PROMPT` explains the assistant rules.
+- `normalize_model_name()` checks if the selected model is allowed.
+- `build_agent()` creates the LangGraph agent.
+- `get_agent()` returns an existing agent or creates a new one.
+
+Beginner idea:
+
+```text
+User message -> Gemini thinks -> LangGraph decides -> answer or tool use
+```
+
+### `tools.py`
+
+`tools.py` contains the tools that the AI agent can use.
+
+An AI agent is more powerful than a normal chatbot because it can call tools. Tools are normal Python functions that the AI can choose when needed.
+
+What it does:
+
+- Creates a calculator tool.
+- Creates a document-search tool.
+- Creates memory save and memory recall tools.
+- Creates a Tavily web-search tool.
+- Groups all tools into one `tools` list for the agent.
+
+Important parts:
+
+- `calculator()` solves simple math questions.
+- `search_uploaded_documents()` searches uploaded files.
+- `remember_this()` saves useful user information.
+- `recall_memory()` returns saved memories.
+- `web_search` searches the internet using Tavily.
+- `set_current_thread_id()` tells tools which conversation is active.
+
+Beginner idea:
+
+```text
+Gemini does the thinking.
+tools.py gives Gemini actions it can use.
+```
+
+### `rag.py`
+
+`rag.py` handles document chat. RAG means Retrieval-Augmented Generation.
+
+In simple words, RAG means the app first searches uploaded documents, finds useful text, and gives that text to the AI so it can answer better.
+
+What it does:
+
+- Reads uploaded files.
+- Extracts text from PDF, DOCX, TXT, Markdown, Python, and CSV files.
+- Splits long documents into smaller text chunks.
+- Creates embeddings from those chunks.
+- Stores the chunks in ChromaDB.
+- Searches ChromaDB when the user asks about uploaded documents.
+
+Important parts:
+
+- `read_file_text()` extracts text from uploaded files.
+- `add_document_to_rag()` turns a document into searchable chunks.
+- `retrieve_from_rag()` finds the most relevant chunks for a question.
+
+Beginner idea:
+
+```text
+Upload file -> read text -> split text -> store chunks -> search chunks -> answer question
+```
+
+### `database.py`
+
+`database.py` stores the app data in SQLite.
+
+SQLite is a small local database. It works as a simple file on your computer, so it is easy to use for learning and small projects.
+
+What it stores:
+
+- Conversation list.
+- Chat messages.
+- Long-term memories.
+
+Main database tables:
+
+- `Conversation` stores each chat session.
+- `ChatMessage` stores user and assistant messages.
+- `LongTermMemory` stores saved facts or preferences.
+
+Important parts:
+
+- `init_db()` creates the database tables.
+- `create_or_update_conversation()` creates a new chat or updates an old one.
+- `list_conversations()` loads the sidebar chat list.
+- `save_chat_message()` saves each user or assistant message.
+- `get_chat_history()` loads old messages for one conversation.
+- `save_memory()` saves a memory.
+- `search_memory()` returns saved memories.
+
+Beginner idea:
+
+```text
+database.py remembers chats, messages, and saved user facts.
+```
+
+### `test.py`
+
+`test.py` is a small developer test file.
+
+It is not the main application. It is used to test the agent directly from Python without opening the browser.
+
+What it does:
+
+- Initializes the database.
+- Loads the Gemini agent.
+- Sends a test message.
+- Prints the streamed response in the terminal.
+
+Important note:
+
+- You normally run the app with `python app.py`.
+- Use `test.py` only when you want to test the agent from the command line.
+
+Beginner idea:
+
+```text
+test.py checks if the agent can respond without using the web UI.
+```
+
+## Beginner AI Agent Flow
+
+Here is the full project flow in simple steps:
+
+1. The user opens the WaelGPT web page.
+2. The user sends a message or uploads a document.
+3. `app.py` receives the request.
+4. `agent.py` sends the message to Gemini through LangGraph.
+5. Gemini decides if it can answer directly or if it needs a tool.
+6. If a tool is needed, `tools.py` runs the correct tool.
+7. If the user asks about a document, `rag.py` searches uploaded document chunks.
+8. If the app needs saved chats or memory, `database.py` reads or writes SQLite data.
+9. `app.py` streams the final answer back to the browser.
+
+Simple diagram:
+
+```text
+Browser
+  |
+  v
+app.py
+  |
+  v
+agent.py
+  |
+  +--> tools.py
+  |      +--> Tavily web search
+  |      +--> Calculator
+  |      +--> Memory
+  |
+  +--> rag.py
+  |      +--> ChromaDB document search
+  |
+  +--> database.py
+         +--> SQLite chats and memories
+```
+
 ## Requirements
 
 Before running the project, install:
