@@ -353,6 +353,45 @@ agent.py
          +--> SQLite chats and memories
 ```
 
+## LangGraph Workflow
+
+WaelGPT uses a small LangGraph workflow inside `agent.py`.
+
+The workflow is simple:
+
+1. `__start__` begins the graph.
+2. `chat_node` sends the user message to Gemini.
+3. Gemini decides what to do next.
+4. If Gemini can answer directly, the graph goes to `__end__`.
+5. If Gemini needs a tool, the graph goes to `tools`.
+6. `tools` runs the selected tool, such as web search, document search, memory, or calculator.
+7. After the tool finishes, the result goes back to `chat_node`.
+8. `chat_node` uses the tool result to create the final answer.
+9. The graph finishes at `__end__`.
+
+LangGraph workflow diagram:
+
+```mermaid
+flowchart TD
+    start([__start__]) --> chat_node[chat_node]
+    chat_node -.->|no tool needed| end_node([__end__])
+    chat_node -.->|tool needed| tools[tools]
+    tools --> chat_node
+```
+
+Simple explanation:
+
+```text
+Start
+  |
+  v
+Chat node asks Gemini what to do
+  |
+  +--> If no tool is needed: finish
+  |
+  +--> If a tool is needed: run tool, return result, then answer
+```
+
 ## Requirements
 
 Before running the project, install:
